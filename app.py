@@ -1,8 +1,11 @@
+import os
 from flask import Flask, render_template, request
 import threading
 from socket import *
 from queue import Queue
-from scapy.all import IP, TCP, sr, sr1, ICMP
+import nmap
+import subprocess
+import platform
 
 app = Flask(__name__)
 
@@ -69,45 +72,37 @@ def portScan(tgtHost, tgtPorts, detectService):
     queue.join()
     return results
 
-# Enhanced OS detection using scapy
-def detect_os(ip):
-    os_patterns = [
-        {"ttl": 64, "window_size": 5840, "os": "Linux (Kernel 2.4 and 2.6)"},
-        {"ttl": 64, "window_size": 65535, "os": "Windows"},
-        {"ttl": 128, "window_size": 8192, "os": "Windows"},
-        {"ttl": 255, "window_size": 4128, "os": "Cisco Router"}
-    ]
+# Function to detect operating system using nmap
+def detect_os(target):
+    nm = nmap.PortScanner()
+    nm.scan(hosts=target, arguments='-O')
+    os_results = []
+    for host in nm.all_hosts():
+        os_results.append(f"Host : {host} ({nm[host].hostname()})")
+        os_results.append(f"State : {nm[host].state()}")
+        if 'osclass' in nm[host]:
+            for osclass in nm[host]['osclass']:
+                os_results.append(f"OS Type : {osclass['type']}")
+                os_results.append(f"OS Vendor : {osclass['vendor']}")
+                os_results.append(f"OS Family : {osclass['osfamily']}")
+                os_results.append(f"OS Generation : {osclass['osgen']}")
+                os_results.append(f"OS Accuracy : {osclass['accuracy']}%")
+    return os_results
 
-    # Checking multiple common ports
-    for dport in [80, 443, 22, 25, 53]:
-        ans, unans = sr(IP(dst=ip)/TCP(dport=dport, flags="S"), timeout=2, verbose=0)
-        for sent, received in ans:
-            if received.haslayer(TCP):
-                ttl = received.ttl
-                window_size = received.window
-                for pattern in os_patterns:
-                    if ttl == pattern["ttl"] and window_size == pattern["window_size"]:
-                        return pattern["os"]
-    return "OS Detection Failed"
+# Function to trace route to the target
+def trace_route(target):
+    if platform.system().lower() == 'windows':
+        command = ['tracert', target]
+    else:
+        command = ['traceroute', target]
 
-# Function to perform a traceroute
-def trace_route(ip):
-    max_hops = 30
-    results = []
-    for ttl in range(1, max_hops + 1):
-        pkt = IP(dst=ip, ttl=ttl) / ICMP()
-        reply = sr1(pkt, verbose=0, timeout=1)
-        if reply is None:
-            results.append(f"{ttl}\t*")
-            break
-        elif reply.type == 0:
-            results.append(f"{ttl}\t{reply.src}\tDestination reached")
-            break
-        else:
-            results.append(f"{ttl}\t{reply.src}")
-    return results
+    try:
+        result = subprocess.run(command, capture_output=True, text=True)
+        return result.stdout.split('\n')
+    except Exception as e:
+        return [str(e)]
 
-@app.route('/')
+@app.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
 
@@ -138,5 +133,5 @@ def scan():
     return '\n'.join(results)
 
 if __name__ == '__main__':
-    app.run(debug=True)
-
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
