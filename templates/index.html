@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Port Scanner</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Advanced Port Scanner</h1>
+        <form id="scanForm" method="POST" action="/scan">
+            <div class="form-group">
+                <label for="target">Target IP or Hostname:</label>
+                <input type="text" id="target" name="target" required>
+            </div>
+            <div class="form-group">
+                <label>Scan Type:</label>
+                <div class="scan-type">
+                    <label><input type="radio" name="scanType" value="light" checked> Light Scan (Top 1000 ports)</label>
+                    <label><input type="radio" name="scanType" value="deep"> Deep Scan (All 65535 ports)</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="detectService">Detect Service Version:</label>
+                <input type="checkbox" id="detectService" name="detectService">
+            </div>
+            <div class="form-group">
+                <label for="detectOS">Detect Operating System:</label>
+                <input type="checkbox" id="detectOS" name="detectOS">
+            </div>
+            <div class="form-group">
+                <label for="traceRoute">Perform Traceroute:</label>
+                <input type="checkbox" id="traceRoute" name="traceRoute">
+            </div>
+            <div class="form-group">
+                <button type="submit">Start Scan</button>
+            </div>
+        </form>
+        <div id="loading" class="loading">Loading...</div>
+        <div id="results">
+            <h2>Scan Results:</h2>
+            <pre id="scanResults"></pre>
+        </div>
+    </div>
+    <script>
+        const form = document.getElementById('scanForm');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const scanResults = document.getElementById('scanResults');
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            scanResults.textContent = '';
+            
+            const formData = new FormData(form);
+            fetch('/scan', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(data => {
+                loading.style.display = 'none';
+                results.style.display = 'block';
+                scanResults.textContent = data;
+            })
+            .catch(error => {
+                loading.style.display = 'none';
+                results.style.display = 'block';
+                scanResults.textContent = 'Error: ' + error;
+            });
+        });
+    </script>
+</body>
+</html>
