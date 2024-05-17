@@ -77,33 +77,28 @@ def detect_os(target):
     nm = nmap.PortScanner()
     try:
         nm.scan(hosts=target, arguments='-O')
-    except nmap.PortScannerError as e:
-        return f"OS Detection Failed: {str(e)}"
+        os_results = []
+        for host in nm.all_hosts():
+            os_results.append(f"Host : {host} ({nm[host].hostname()})")
+            os_results.append(f"State : {nm[host].state()}")
+            if 'osclass' in nm[host]:
+                for osclass in nm[host]['osclass']:
+                    os_results.append(f"OS Type : {osclass['type']}")
+                    os_results.append(f"OS Vendor : {osclass['vendor']}")
+                    os_results.append(f"OS Family : {osclass['osfamily']}")
+                    os_results.append(f"OS Generation : {osclass['osgen']}")
+                    os_results.append(f"OS Accuracy : {osclass['accuracy']}%")
+        return os_results
+    except Exception as e:
+        return [f"Operating System: OS Detection Failed ({str(e)})"]
 
-    os_results = []
-    for host in nm.all_hosts():
-        os_results.append(f"Host : {host} ({nm[host].hostname()})")
-        os_results.append(f"State : {nm[host].state()}")
-        if 'osclass' in nm[host]:
-            for osclass in nm[host]['osclass']:
-                os_results.append(f"OS Type : {osclass['type']}")
-                os_results.append(f"OS Vendor : {osclass['vendor']}")
-                os_results.append(f"OS Family : {osclass['osfamily']}")
-                os_results.append(f"OS Generation : {osclass['osgen']}")
-                os_results.append(f"OS Accuracy : {osclass['accuracy']}%")
-    return os_results
-
-# Function to perform traceroute
+# Function to perform traceroute using scapy
 def trace_route(target):
     try:
-        if platform.system() == "Windows":
-            output = subprocess.check_output(["tracert", target], stderr=subprocess.STDOUT, universal_newlines=True)
-        else:
-            output = subprocess.check_output(["traceroute", target], stderr=subprocess.STDOUT, universal_newlines=True)
-    except subprocess.CalledProcessError as e:
-        return f"Traceroute Failed: {str(e)}"
-
-    return output.strip().split('\n')
+        result = subprocess.check_output(['tracert', target], universal_newlines=True)
+        return result.split('\n')
+    except Exception as e:
+        return [f"Traceroute: Traceroute Failed ({str(e)})"]
 
 @app.route('/')
 def index():
@@ -137,4 +132,4 @@ def scan():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(debug=True, host='0.0.0.0', port=port)
