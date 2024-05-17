@@ -1,4 +1,3 @@
-import os
 from flask import Flask, render_template, request
 import threading
 from socket import *
@@ -6,6 +5,7 @@ from queue import Queue
 import nmap
 import subprocess
 import platform
+import os
 
 app = Flask(__name__)
 
@@ -75,7 +75,11 @@ def portScan(tgtHost, tgtPorts, detectService):
 # Function to detect operating system using nmap
 def detect_os(target):
     nm = nmap.PortScanner()
-    nm.scan(hosts=target, arguments='-O')
+    try:
+        nm.scan(hosts=target, arguments='-O')
+    except nmap.PortScannerError as e:
+        return f"OS Detection Failed: {str(e)}"
+
     os_results = []
     for host in nm.all_hosts():
         os_results.append(f"Host : {host} ({nm[host].hostname()})")
@@ -89,20 +93,19 @@ def detect_os(target):
                 os_results.append(f"OS Accuracy : {osclass['accuracy']}%")
     return os_results
 
-# Function to trace route to the target
+# Function to perform traceroute
 def trace_route(target):
-    if platform.system().lower() == 'windows':
-        command = ['tracert', target]
-    else:
-        command = ['traceroute', target]
-
     try:
-        result = subprocess.run(command, capture_output=True, text=True)
-        return result.stdout.split('\n')
-    except Exception as e:
-        return [str(e)]
+        if platform.system() == "Windows":
+            output = subprocess.check_output(["tracert", target], stderr=subprocess.STDOUT, universal_newlines=True)
+        else:
+            output = subprocess.check_output(["traceroute", target], stderr=subprocess.STDOUT, universal_newlines=True)
+    except subprocess.CalledProcessError as e:
+        return f"Traceroute Failed: {str(e)}"
 
-@app.route('/', methods=['GET'])
+    return output.strip().split('\n')
+
+@app.route('/')
 def index():
     return render_template('index.html')
 
