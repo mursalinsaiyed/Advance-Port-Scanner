@@ -4,12 +4,11 @@ from socket import *
 from queue import Queue
 import nmap
 import subprocess
-import platform
 import os
 
 app = Flask(__name__)
 
-N_THREADS = 100
+N_THREADS = 200  # Increased number of threads
 queue = Queue()
 print_lock = threading.Lock()
 results = []
@@ -27,15 +26,15 @@ def conScan(tgtHost, tgtPort, detectService):
     try:
         conn_skt = socket(AF_INET, SOCK_STREAM)
         conn_skt.connect((tgtHost, tgtPort))
-        conn_skt.settimeout(1)
+        conn_skt.settimeout(0.5)  # Reduced timeout
         banner = grab_banner(conn_skt) if detectService else ''
         with print_lock:
-            result = '[+] %d/tcp open: %s' % (tgtPort, banner)
+            result = f'[+] {tgtPort}/tcp open: {banner}'
             results.append(result)
         conn_skt.close()
     except:
         with print_lock:
-            result = '[-] %d/tcp closed' % tgtPort
+            result = f'[-] {tgtPort}/tcp closed'
             results.append(result)
 
 # Worker thread function
@@ -52,15 +51,16 @@ def portScan(tgtHost, tgtPorts, detectService):
     try:
         tgtIP = gethostbyname(tgtHost)
     except:
-        results.append('[-] Cannot resolve %s' % tgtHost)
+        results.append(f'[-] Cannot resolve {tgtHost}')
         return results
     try:
         tgtName = gethostbyaddr(tgtIP)
-        results.append('\n[+] Scan result of: %s' % tgtName[0])
+        results.append(f'\n[+] Scan result of: {tgtName[0]}')
     except:
-        results.append('\n[+] Scan result of: %s' % tgtIP)
+        results.append(f'\n[+] Scan result of: {tgtIP}')
 
-    setdefaulttimeout(1)
+    setdefaulttimeout(0.5)  # Adjust the timeout value here
+
     for tgtPort in tgtPorts:
         queue.put(tgtPort)
 
@@ -92,7 +92,7 @@ def detect_os(target):
     except Exception as e:
         return [f"Operating System: OS Detection Failed ({str(e)})"]
 
-# Function to perform traceroute using scapy
+# Function to perform traceroute using subprocess
 def trace_route(target):
     try:
         result = subprocess.check_output(['tracert', target], universal_newlines=True)
@@ -121,14 +121,15 @@ def scan():
 
     if detect_os_flag:
         os_info = detect_os(target)
-        results.append(f"Operating System: {os_info}")
+        results.append("Operating System Info:")
+        results.extend(os_info)
 
     if trace_route_flag:
         trace_info = trace_route(target)
-        results.append("\nTraceroute Results:")
+        results.append("Traceroute Results:")
         results.extend(trace_info)
 
-    return '\n'.join(results)
+    return '<br>'.join(results)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
