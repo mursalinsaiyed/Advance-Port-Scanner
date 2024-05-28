@@ -9,7 +9,7 @@
 <body>
     <div class="container">
         <h1>Advanced Port Scanner</h1>
-        <form id="scanForm" method="POST" action="/scan">
+        <form id="scanForm" method="POST">
             <div class="form-group">
                 <label for="target">Target IP or Hostname:</label>
                 <input type="text" id="target" name="target" required>
@@ -48,13 +48,13 @@
         const loading = document.getElementById('loading');
         const results = document.getElementById('results');
         const scanResults = document.getElementById('scanResults');
-
+    
         form.addEventListener('submit', function(event) {
             event.preventDefault();
             loading.style.display = 'block';
             results.style.display = 'none';
             scanResults.textContent = '';
-            
+    
             const formData = new FormData(form);
             fetch('/scan', {
                 method: 'POST',
@@ -64,7 +64,7 @@
             .then(data => {
                 loading.style.display = 'none';
                 results.style.display = 'block';
-                scanResults.textContent = data;
+                scanResults.textContent = data;  // Display the results as text
             })
             .catch(error => {
                 loading.style.display = 'none';
@@ -73,5 +73,6 @@
             });
         });
     </script>
+    
 </body>
 </html>

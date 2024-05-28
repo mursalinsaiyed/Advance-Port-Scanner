@@ -1,12 +1,14 @@
 from flask import Flask, render_template, request
 import threading
 from socket import *
-from queue import Queue
+from queue import Queue 
 import nmap
 import subprocess
 import os
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 N_THREADS = 200  # Increased number of threads
 queue = Queue()
@@ -129,7 +131,7 @@ def scan():
         results.append("Traceroute Results:")
         results.extend(trace_info)
 
-    return '<br>'.join(results)
+    return '\n'.join(results)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
